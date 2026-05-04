@@ -1,0 +1,46 @@
+server:
+  port: 8088
+
+spring:
+  application:
+    name: encounter
+
+# Game balance parameters (externalized for tuning)
+game:
+  max-hp: 100.0
+  tick-interval-ms: 50
+  npc:
+    move-interval-min: 1.5
+    move-interval-max: 2.5
+    adapt-time: 1.0
+  beast:
+    initial-satiety: 100.0
+    decay-rate: 2.0
+    feed-rate: 15.0
+    move-interval: 1.0
+  combat:
+    steal-ratio: 0.5
+    execution-threshold: 20.0
+    start-phase-duration: 1.0
+    compare-phase-duration: 2.5
+    result-phase-duration: 4.5
+  reading:
+    duration: 10.0
+    corruption-cap: 100.0
+    book-20-reward: 5.0
+    book-50-reward: 10.0
+    failure-focus-loss: 5.0
+    spawn-interval-20: 0.6
+    spawn-interval-50: 0.3
+    corruption-rate-20: 2.0
+    corruption-rate-50: 3.0
+    purify-amount: 2.5
+  reallocation:
+    duration: 4.0
+  items:
+    invisibility-duration: 5.0
+  divination:
+    cooldown: 60.0
+    fallback-cooldown: 0
+    tower-stun-duration: 4.0
+    display-duration: 3.0

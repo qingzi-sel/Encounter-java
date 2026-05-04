@@ -1,0 +1,6 @@
+{
+  "name": "Encounter 遭遇",
+  "description": "一个基于单页面浏览器的属性资源争夺战游戏。包含核心时间轴机制和房间拓扑移动玩法。",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

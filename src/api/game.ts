@@ -13,8 +13,13 @@ async function post<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error((err as { error?: string }).error ?? res.statusText);
+    const errText = await res.text();
+    try {
+      const err = JSON.parse(errText);
+      throw new Error((err as { error?: string }).error ?? errText || res.statusText);
+    } catch {
+      throw new Error(errText || res.statusText);
+    }
   }
   return res.json();
 }
@@ -67,7 +72,10 @@ export const gameApi = {
 
   async getRooms(): Promise<RoomsResponse> {
     const res = await fetch(`${BASE_URL}/rooms`);
-    if (!res.ok) throw new Error('Failed to fetch rooms');
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(errText || 'Failed to fetch rooms');
+    }
     return res.json();
   },
 

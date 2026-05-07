@@ -9,6 +9,7 @@ import { Activity, Swords } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { gameApi } from './api/game';
 import { useGameWebSocket } from './hooks/useWebSocket';
+import { reportError } from './utils/error';
 import type { GameStateDTO, AttributeType, RoomId, ItemType, RoomDTO } from './types/game';
 
 // ============================================================
@@ -144,7 +145,7 @@ const SetupScreen: React.FC<{ onStart: (attrs: Record<string, number>) => void }
   const handleAdjust = (key: string, delta: number) => {
     gameApi.adjustDistributed(draftRef.current, key, delta)
       .then(r => { setDraft(r.attributes); draftRef.current = r.attributes; })
-      .catch(console.error);
+      .catch(reportError);
   };
 
   const totHP = calcHP(draft);
@@ -227,17 +228,17 @@ const PlayerStatePanel: React.FC<{ s: GameStateDTO }> = ({ s }) => {
   const handleAdjust = (attr: string, delta: number) => {
     gameApi.adjustDistributed(draftRef.current, attr, delta)
       .then(r => { setDraft(r.attributes); draftRef.current = r.attributes; })
-      .catch(console.error);
+      .catch(reportError);
   };
 
   const handleApply = () => {
     if (calcHP(draft) <= currentHP) {
-      gameApi.reallocate(draft).catch(console.error);
+      gameApi.reallocate(draft).catch(reportError);
     }
   };
 
   const handleCancel = () => {
-    gameApi.cancelReallocate().catch(console.error);
+    gameApi.cancelReallocate().catch(reportError);
   };
 
   const getEffAttr = (key: string): number => {
@@ -317,7 +318,7 @@ const PlayerStatePanel: React.FC<{ s: GameStateDTO }> = ({ s }) => {
             <span className="text-[10px] text-theme-text/30">空无一物...</span>
           ) : (
             s.inventory.map((item, idx) => (
-              <button key={idx} onClick={() => gameApi.useItem(item).catch(console.error)}
+              <button key={idx} onClick={() => gameApi.useItem(item).catch(reportError)}
                 className="border border-yellow-500/50 bg-black text-yellow-500 p-1 px-2 text-[10px] hover:bg-yellow-500/20 uppercase">
                 {ITEM_NAMES[item] ?? item}
               </button>
@@ -352,15 +353,15 @@ const MapPanel: React.FC<{ s: GameStateDTO; roomData: RoomData | null }> = ({ s,
 
   const handleMove = (targetId: string) => {
     if (s.timers.trapped > 0) return;
-    gameApi.move(targetId).catch(console.error);
+    gameApi.move(targetId).catch(reportError);
   };
 
   const handleRead = (bookType: number) => {
-    gameApi.startReading(bookType).catch(console.error);
+    gameApi.startReading(bookType).catch(reportError);
   };
 
   const handleDivination = () => {
-    gameApi.startDivination().catch(console.error);
+    gameApi.startDivination().catch(reportError);
   };
 
   return (
@@ -470,10 +471,10 @@ const MapPanel: React.FC<{ s: GameStateDTO; roomData: RoomData | null }> = ({ s,
                   <div className="bg-theme-red h-full" style={{ width: `${Math.max(0, s.beast.satiety)}%` }} />
                 </div>
                 <button
-                  onPointerDown={() => gameApi.startFeeding().catch(console.error)}
-                  onPointerUp={() => gameApi.stopFeeding().catch(console.error)}
-                  onPointerLeave={() => gameApi.stopFeeding().catch(console.error)}
-                  onPointerCancel={() => gameApi.stopFeeding().catch(console.error)}
+                  onPointerDown={() => gameApi.startFeeding().catch(reportError)}
+                  onPointerUp={() => gameApi.stopFeeding().catch(reportError)}
+                  onPointerLeave={() => gameApi.stopFeeding().catch(reportError)}
+                  onPointerCancel={() => gameApi.stopFeeding().catch(reportError)}
                   className="w-full bg-transparent border border-theme-red text-theme-red hover:bg-theme-red/20 h-[36px] text-[12px] uppercase font-bold active:bg-theme-red active:text-white transition-colors cursor-pointer select-none">
                   [长按] 强制输送生体精华
                 </button>
@@ -683,7 +684,7 @@ const ReadingOverlay: React.FC<{ s: GameStateDTO }> = ({ s }) => {
     const word = rd.words.find(w => w.id === wordId);
     if (word && word.isCorrupt) {
       playSound('read_click');
-      gameApi.purifyWord(wordId).catch(console.error);
+      gameApi.purifyWord(wordId).catch(reportError);
     }
   };
 
@@ -816,9 +817,18 @@ const WarningOverlay: React.FC<{ s: GameStateDTO }> = ({ s }) => (
 // ============================================================
 
 export default function App() {
-  const { gameState, connected } = useGameWebSocket();
+  const { gameState, connected, error: wsError, reconnect } = useGameWebSocket();
   const [phase, setPhase] = useState<'setup' | 'playing' | 'gameover'>('setup');
   const [roomData, setRoomData] = useState<RoomData | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  const showError = useCallback((err: unknown) => {
+    reportError(err);
+    const message = err instanceof Error ? err.message : String(err);
+    setApiError(message || '发生未知错误');
+  }, []);
+
+  const clearError = useCallback(() => setApiError(null), []);
 
   // Fetch room map data from backend on mount
   useEffect(() => {
@@ -828,8 +838,8 @@ export default function App() {
         roomsMap[r.id] = r;
       }
       setRoomData({ roomsMap, edges: data.edges });
-    }).catch(console.error);
-  }, []);
+    }).catch(showError);
+  }, [showError]);
 
   const handleStart = useCallback(async (attrs: Record<string, number>) => {
     try {
@@ -837,9 +847,9 @@ export default function App() {
       await gameApi.startGame(attrs);
       setPhase('playing');
     } catch (e) {
-      console.error('Failed to start game:', e);
+      showError(e);
     }
-  }, []);
+  }, [showError]);
 
   // Detect gameover from WebSocket state
   React.useEffect(() => {
@@ -862,6 +872,14 @@ export default function App() {
         {!connected && (
           <div className="fixed bottom-4 right-4 bg-yellow-500/20 border border-yellow-500 text-yellow-500 text-[10px] px-3 py-1 animate-pulse font-mono">
             等待后端连接...
+          </div>
+        )}
+        {wsError && (
+          <div className="fixed bottom-4 left-4 right-4 mx-auto max-w-md rounded-xl border border-red-500 bg-red-500/10 text-red-200 p-3 text-[11px] font-mono">
+            <div className="flex items-center justify-between gap-3">
+              <span>WebSocket 错误: {wsError}</span>
+              <button onClick={reconnect} className="text-xs text-white/80 hover:text-white">重连</button>
+            </div>
           </div>
         )}
       </>
@@ -932,6 +950,9 @@ export default function App() {
           )}
         </div>
         <div className="flex items-center gap-[15px]">
+          <div className={`text-[10px] rounded-full px-2 py-1 border ${connected ? 'border-theme-green bg-theme-green/10 text-theme-green' : 'border-yellow-500 bg-yellow-500/10 text-yellow-300'}`}>
+            {connected ? '服务器在线' : '服务器离线'}
+          </div>
           <span className="text-[12px] hidden sm:block">生命体征</span>
           <div className="w-[120px] sm:w-[300px] md:w-[400px] h-[24px] bg-black border border-theme-border relative">
             <div className="h-full bg-[linear-gradient(90deg,var(--color-theme-red),#ff9999)] transition-all ease-out duration-300"
@@ -942,6 +963,16 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      {apiError && (
+        <div className="fixed left-4 right-4 top-[76px] z-50 mx-auto max-w-3xl rounded-2xl border border-red-500 bg-red-500/10 p-3 text-sm text-red-100 shadow-lg backdrop-blur-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="font-semibold">请求错误</div>
+            <button onClick={clearError} className="text-xs text-red-100/80 hover:text-white">关闭</button>
+          </div>
+          <div className="mt-2 text-[12px] leading-5 text-red-100/90">{apiError}</div>
+        </div>
+      )}
 
       {/* Main Grid */}
       <div className="flex-1 lg:grid lg:grid-cols-[320px_1fr_280px] gap-[12px] relative w-full flex flex-col lg:min-h-0 lg:overflow-hidden pb-4 lg:pb-0">

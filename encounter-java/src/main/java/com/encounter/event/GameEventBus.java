@@ -1,6 +1,8 @@
 package com.encounter.event;
 
 import com.encounter.domain.spec.EventListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -14,6 +16,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @Component
 public class GameEventBus {
 
+    private static final Logger log = LoggerFactory.getLogger(GameEventBus.class);
     private final ConcurrentHashMap<Class<? extends GameEvent>, List<EventListener<?>>> listeners = new ConcurrentHashMap<>();
 
     /**
@@ -35,7 +38,7 @@ public class GameEventBus {
                 try {
                     ((EventListener<T>) listener).onEvent(event);
                 } catch (Exception e) {
-                    System.err.println("Error handling event " + event.getClass().getSimpleName() + ": " + e.getMessage());
+                    log.error("Error handling event {}", event.getClass().getSimpleName(), e);
                 }
             }
         }

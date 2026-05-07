@@ -4,6 +4,8 @@ import com.encounter.controller.dto.ActionRequest;
 import com.encounter.domain.model.*;
 import com.encounter.engine.GameEngine;
 import com.encounter.util.AttributeMath;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,6 +19,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/game")
 public class GameController {
 
+    private static final Logger log = LoggerFactory.getLogger(GameController.class);
     private final GameEngine engine;
 
     public GameController(GameEngine engine) {
@@ -34,6 +37,7 @@ public class GameController {
                 AttributeType type = AttributeType.valueOf(entry.getKey().toUpperCase());
                 attrs.set(type, entry.getValue());
             } catch (IllegalArgumentException e) {
+                log.warn("Invalid start game attribute key: {}", entry.getKey(), e);
                 return ResponseEntity.badRequest().body(Map.of("error", "未知属性: " + entry.getKey()));
             }
         }
@@ -48,6 +52,7 @@ public class GameController {
             engine.playerMove(target);
             return ResponseEntity.ok(Map.of("status", "ok"));
         } catch (IllegalArgumentException e) {
+            log.warn("Invalid move target room id: {}", req.getTargetRoomId(), e);
             return ResponseEntity.badRequest().body(Map.of("error", "未知房间: " + req.getTargetRoomId()));
         }
     }
@@ -63,6 +68,7 @@ public class GameController {
                 AttributeType type = AttributeType.valueOf(entry.getKey().toUpperCase());
                 draft.set(type, entry.getValue());
             } catch (IllegalArgumentException e) {
+                log.warn("Invalid reallocate attribute key: {}", entry.getKey(), e);
                 return ResponseEntity.badRequest().body(Map.of("error", "未知属性: " + entry.getKey()));
             }
         }
@@ -104,6 +110,7 @@ public class GameController {
             engine.useItem(itemType);
             return ResponseEntity.ok(Map.of("status", "ok"));
         } catch (IllegalArgumentException e) {
+            log.warn("Invalid item type: {}", req.getItemType(), e);
             return ResponseEntity.badRequest().body(Map.of("error", "未知道具: " + req.getItemType()));
         }
     }
@@ -159,6 +166,7 @@ public class GameController {
         try {
             targetType = AttributeType.valueOf(req.getTargetKey().toUpperCase());
         } catch (IllegalArgumentException e) {
+            log.warn("Invalid adjustDistributed target key: {}", req.getTargetKey(), e);
             return ResponseEntity.badRequest().body(Map.of("error", "未知属性: " + req.getTargetKey()));
         }
 
@@ -168,6 +176,7 @@ public class GameController {
                 AttributeType type = AttributeType.valueOf(entry.getKey().toUpperCase());
                 current.put(type, entry.getValue());
             } catch (IllegalArgumentException e) {
+                log.warn("Invalid adjustDistributed attribute key: {}", entry.getKey(), e);
                 return ResponseEntity.badRequest().body(Map.of("error", "未知属性: " + entry.getKey()));
             }
         }

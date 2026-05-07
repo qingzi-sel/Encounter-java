@@ -6,6 +6,8 @@ import com.encounter.engine.GameEngine;
 import com.encounter.engine.GameState;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -23,6 +25,7 @@ import java.util.stream.Collectors;
 @Component
 public class GameWebSocketHandler extends TextWebSocketHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(GameWebSocketHandler.class);
     private final GameEngine engine;
     private final ObjectMapper mapper = new ObjectMapper();
     private final Set<WebSocketSession> sessions = new CopyOnWriteArraySet<>();
@@ -46,7 +49,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 String json = mapper.writeValueAsString(toDTO(s.getState()));
                 session.sendMessage(new TextMessage(json));
             } catch (IOException e) {
-                // ignore
+                log.error("Failed to send initial game state to websocket client", e);
             }
         }
     }
@@ -66,6 +69,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         try {
             json = mapper.writeValueAsString(toDTO(s));
         } catch (Exception e) {
+            log.error("Failed to serialize game state for WebSocket broadcast", e);
             return;
         }
         TextMessage msg = new TextMessage(json);
@@ -75,6 +79,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     session.sendMessage(msg);
                 }
             } catch (IOException e) {
+                log.warn("WebSocket send failed, removing session", e);
                 sessions.remove(session);
             }
         }

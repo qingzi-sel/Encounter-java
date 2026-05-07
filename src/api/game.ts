@@ -16,7 +16,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
     const errText = await res.text();
     try {
       const err = JSON.parse(errText);
-      throw new Error((err as { error?: string }).error ?? errText || res.statusText);
+      throw new Error(((err as { error?: string }).error ?? errText) || res.statusText);
     } catch {
       throw new Error(errText || res.statusText);
     }
